@@ -1,0 +1,1018 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>메이플키우기 전투 성능 시뮬레이터 v6 | 이관엽</title>
+<style>
+:root{
+  --bg:#0d1117;--surf:#161b22;--surf2:#21262d;--bd:#30363d;
+  --acc:#f0883e;--blue:#58a6ff;--green:#3fb950;--red:#f85149;
+  --yel:#d29922;--pur:#a371f7;--txt:#e6edf3;--dim:#8b949e;--mut:#6e7681;
+  --war:#e85d04;--mag:#7b2fff;--arc:#2ea043;--rog:#c0392b;
+  --bal-lo:1.0;--bal-hi:1.85;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--txt);font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;font-size:13px;line-height:1.5;}
+button{font-family:inherit;cursor:pointer;}
+
+/* ── layout ── */
+.hdr{padding:12px 24px;border-bottom:1px solid var(--bd);background:var(--surf);display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.hdr h1{font-size:14px;font-weight:700;}
+.chip{font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;}
+.chip-org{background:var(--acc);color:#000;}
+.chip-blue{background:var(--blue);color:#000;}
+.hdr-meta{color:var(--dim);font-size:11px;margin-left:auto;}
+
+.tabs{display:flex;border-bottom:1px solid var(--bd);background:var(--surf);padding:0 24px;}
+.tbtn{padding:10px 18px;border:none;background:none;color:var(--dim);font-size:13px;border-bottom:2px solid transparent;transition:all .15s;}
+.tbtn:hover{color:var(--txt);}
+.tbtn.on{color:var(--acc);border-bottom-color:var(--acc);font-weight:600;}
+.tab{display:none;padding:18px 24px;}
+.tab.on{display:block;}
+
+/* ── cards ── */
+.card{background:var(--surf);border:1px solid var(--bd);border-radius:8px;padding:14px 16px;margin-bottom:14px;}
+.card-t{font-size:11px;font-weight:700;color:var(--dim);margin-bottom:10px;display:flex;align-items:center;gap:8px;}
+.card-t .note{font-weight:400;color:var(--mut);}
+
+/* ── toggles / controls ── */
+.ctrl{display:flex;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap;}
+.ctrl-lbl{font-size:11px;color:var(--dim);}
+.tog{display:flex;background:var(--surf2);border-radius:6px;padding:2px;border:1px solid var(--bd);}
+.topt{padding:4px 11px;border:none;background:none;color:var(--dim);border-radius:4px;font-size:11px;transition:all .15s;}
+.topt.on{background:var(--acc);color:#000;font-weight:700;}
+.topt.on.blue{background:var(--blue);}
+
+/* ── bar chart ── */
+.bar-row{display:flex;align-items:center;gap:7px;margin-bottom:4px;cursor:pointer;}
+.bar-row:hover .jname{color:var(--acc);}
+.jname{width:130px;font-size:11px;text-align:right;color:var(--txt);white-space:nowrap;flex-shrink:0;transition:color .12s;}
+.jname.dim{color:var(--mut);}
+.btrack{flex:1;height:22px;background:var(--surf2);border-radius:3px;position:relative;overflow:visible;}
+.jbar{height:100%;border-radius:3px;display:flex;align-items:center;justify-content:flex-end;padding-right:5px;transition:width .3s ease;}
+.bval{font-size:11px;font-weight:700;color:rgba(255,255,255,.9);}
+.kpdot{position:absolute;width:9px;height:9px;border-radius:50%;background:var(--blue);border:2px solid rgba(255,255,255,.8);top:50%;transform:translate(-50%,-50%);z-index:3;pointer-events:none;transition:left .3s ease;}
+.bgoal-lo,.bgoal-hi{position:absolute;top:0;bottom:0;width:1px;z-index:2;pointer-events:none;}
+.bgoal-lo{background:rgba(63,185,80,.35);}
+.bgoal-hi{background:rgba(63,185,80,.35);}
+.bgoal-fill{position:absolute;top:0;bottom:0;background:rgba(63,185,80,.07);pointer-events:none;z-index:1;}
+.ocol{width:36px;font-size:10px;color:var(--mut);text-align:right;flex-shrink:0;}
+.kcol{width:40px;font-size:10px;color:var(--blue);text-align:right;flex-shrink:0;}
+.rcol{width:18px;font-size:10px;color:var(--mut);text-align:center;flex-shrink:0;}
+.axis-row{display:flex;align-items:center;gap:7px;margin-top:4px;}
+.axis-sp{width:130px;flex-shrink:0;}
+.axis-lb{flex:1;display:flex;justify-content:space-between;}
+.albl{font-size:10px;color:var(--mut);}
+
+/* ── overview 2-col ── */
+.ov-grid{display:grid;grid-template-columns:1fr 290px;gap:14px;align-items:start;}
+.stat-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--bd);font-size:12px;}
+.stat-row:last-child{border-bottom:none;}
+.slbl{color:var(--dim);}
+.sval{font-weight:700;font-family:monospace;}
+.sval.r{color:var(--red);}
+.sval.g{color:var(--green);}
+.sval.y{color:var(--yel);}
+.infonote{background:rgba(88,166,255,.05);border:1px solid rgba(88,166,255,.18);border-radius:6px;padding:9px 12px;font-size:11px;color:var(--dim);line-height:1.65;margin-top:10px;}
+.infonote strong{color:var(--blue);}
+.legend-row{display:flex;gap:14px;margin-bottom:10px;flex-wrap:wrap;}
+.leg{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--dim);}
+.leg-sq{width:10px;height:10px;border-radius:2px;}
+.leg-ci{width:10px;height:10px;border-radius:50%;border:2px solid var(--blue);background:none;}
+.leg-li{width:14px;height:2px;background:var(--green);opacity:.7;}
+
+/* ── job selector ── */
+.jsel{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px;}
+.jbtn{padding:5px 12px;border:1px solid var(--bd);border-radius:6px;background:var(--surf);color:var(--dim);font-size:12px;transition:all .15s;display:flex;align-items:center;gap:5px;}
+.jbtn:hover{border-color:var(--txt);color:var(--txt);}
+.jbtn.on{border-color:var(--acc);background:rgba(240,136,62,.1);color:var(--acc);font-weight:600;}
+.cdot{display:inline-block;width:7px;height:7px;border-radius:50%;}
+
+/* ── detail layout ── */
+.det-grid{display:grid;grid-template-columns:1fr 270px;gap:14px;align-items:start;}
+.sk-card{background:var(--surf);border:1px solid var(--bd);border-radius:8px;padding:14px;}
+.sk-hdr{font-size:13px;font-weight:700;margin-bottom:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.cpi-badge{font-size:22px;font-weight:700;color:var(--acc);}
+table.sk{width:100%;border-collapse:collapse;font-size:11px;}
+.sk th{padding:5px 7px;text-align:left;color:var(--mut);font-size:10px;font-weight:600;border-bottom:1px solid var(--bd);}
+.sk td{padding:7px 7px;border-bottom:1px solid rgba(48,54,61,.4);vertical-align:middle;}
+.sk tr:last-child td{border-bottom:none;}
+.sk tr:hover td{background:rgba(255,255,255,.02);}
+.tbadge{display:inline-block;padding:1px 6px;border-radius:3px;font-size:9px;font-weight:700;}
+.tp-p{background:rgba(88,166,255,.18);color:var(--blue);}
+.tp-a{background:rgba(240,136,62,.18);color:var(--acc);}
+.tp-r{background:rgba(163,113,247,.18);color:var(--pur);}
+.tp-d{background:rgba(248,81,73,.18);color:var(--red);}
+.tp-s{background:rgba(63,185,80,.18);color:var(--green);}
+.cnum{font-weight:700;font-family:monospace;font-size:11px;}
+.sl-wrap{display:flex;align-items:center;gap:5px;}
+input[type=range]{-webkit-appearance:none;width:88px;height:3px;background:var(--surf2);border-radius:2px;outline:none;cursor:pointer;}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:11px;height:11px;border-radius:50%;background:var(--acc);cursor:pointer;}
+.sv{font-size:10px;color:var(--acc);width:38px;text-align:right;font-family:monospace;}
+
+/* ── cpi panel ── */
+.cpanel{background:var(--surf);border:1px solid var(--bd);border-radius:8px;padding:14px;}
+.cphero{text-align:center;padding:10px 0 14px;border-bottom:1px solid var(--bd);margin-bottom:12px;}
+.cpbig{font-size:48px;font-weight:700;color:var(--acc);line-height:1;}
+.cplbl{font-size:11px;color:var(--mut);margin-top:3px;}
+.cp-stats{display:flex;justify-content:center;gap:16px;margin-top:7px;font-size:11px;color:var(--dim);}
+.cp-stats span{font-weight:600;color:var(--txt);}
+.bd-t{font-size:10px;font-weight:700;color:var(--mut);text-transform:uppercase;letter-spacing:.05em;margin-bottom:7px;}
+.bd-stack{height:14px;display:flex;border-radius:3px;overflow:hidden;margin-bottom:9px;}
+.bd-seg{height:100%;transition:width .3s ease;}
+.bd-leg{display:flex;flex-direction:column;gap:4px;}
+.bd-r{display:flex;justify-content:space-between;align-items:center;font-size:11px;}
+.bd-l{display:flex;align-items:center;gap:4px;}
+.bd-dot{width:7px;height:7px;border-radius:2px;flex-shrink:0;}
+.bd-n{color:var(--dim);}
+.bd-v{font-family:monospace;font-weight:700;font-size:11px;}
+.pos-chart{margin-top:14px;padding-top:12px;border-top:1px solid var(--bd);}
+.warn-box{background:rgba(248,81,73,.07);border:1px solid rgba(248,81,73,.25);border-radius:5px;padding:7px 10px;font-size:10px;color:var(--red);margin-bottom:10px;line-height:1.5;}
+.yel-box{background:rgba(210,153,34,.07);border:1px solid rgba(210,153,34,.25);border-radius:5px;padding:7px 10px;font-size:10px;color:var(--yel);margin-bottom:8px;line-height:1.5;}
+.note-box{background:rgba(48,54,61,.4);border:1px solid var(--bd);border-radius:5px;padding:7px 10px;font-size:10px;color:var(--mut);margin-top:10px;line-height:1.6;}
+.note-box .y{color:var(--yel);}
+
+/* ── sim tab ── */
+.sim-grid{display:grid;grid-template-columns:320px 1fr;gap:14px;align-items:start;}
+.sim-jsel{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:12px;}
+.sjbtn{padding:4px 10px;border:1px solid var(--bd);border-radius:4px;background:none;color:var(--mut);font-size:11px;transition:all .15s;}
+.sjbtn:hover{color:var(--txt);}
+.sjbtn.on{border-color:var(--acc);color:var(--acc);}
+.ba-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;}
+.ba-box{background:var(--surf2);border-radius:6px;padding:10px;text-align:center;}
+.ba-lbl{font-size:10px;color:var(--mut);margin-bottom:3px;}
+.ba-num{font-size:26px;font-weight:700;font-family:monospace;}
+.ba-num.b{color:var(--dim);}
+.ba-num.a{color:var(--acc);}
+.delta-ln{text-align:center;font-size:12px;min-height:16px;margin-top:2px;}
+.up{color:var(--green);}.dn{color:var(--red);}.eq{color:var(--mut);}
+table.sim-sk{width:100%;font-size:11px;border-collapse:collapse;}
+.sim-sk td{padding:5px 3px;border-bottom:1px solid rgba(48,54,61,.35);}
+.sim-sk tr:last-child td{border-bottom:none;}
+.rbtn{width:100%;padding:5px;background:var(--surf2);border:1px solid var(--bd);border-radius:5px;color:var(--dim);font-size:11px;margin-top:5px;transition:all .15s;}
+.rbtn:hover{color:var(--txt);}
+
+/* presets */
+.preset-row{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px;}
+.pbtn{padding:4px 10px;border:1px solid var(--bd);border-radius:4px;background:var(--surf2);color:var(--dim);font-size:10px;transition:all .15s;}
+.pbtn:hover{border-color:var(--acc);color:var(--acc);}
+.pbtn.on{border-color:var(--acc);background:rgba(240,136,62,.12);color:var(--acc);}
+
+/* diff chart */
+.diff-row{display:flex;align-items:center;gap:6px;margin-bottom:4px;}
+.diff-n{width:138px;font-size:11px;text-align:right;flex-shrink:0;color:var(--txt);}
+.diff-n.hi{color:var(--acc);font-weight:700;}
+.dtrack{flex:1;height:18px;background:var(--surf2);border-radius:3px;position:relative;overflow:visible;}
+.dbase{position:absolute;height:100%;background:rgba(48,54,61,.9);border-radius:3px;border:1px solid var(--bd);}
+.dadj{position:absolute;height:100%;border-radius:3px;opacity:.7;transition:width .3s ease;}
+.dgoal-fill{position:absolute;top:0;bottom:0;background:rgba(63,185,80,.08);pointer-events:none;}
+.dgoal-lo,.dgoal-hi{position:absolute;top:0;bottom:0;width:1px;background:rgba(63,185,80,.4);}
+.dnums{width:74px;display:flex;gap:3px;font-size:10px;font-family:monospace;flex-shrink:0;}
+.db{color:var(--mut);}
+.da{color:var(--acc);}
+
+/* stats summary */
+.stats-row{display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap;}
+.stat-box{flex:1;min-width:110px;background:var(--surf2);border-radius:6px;padding:8px 10px;text-align:center;}
+.stat-box .sv2{font-size:18px;font-weight:700;font-family:monospace;}
+.stat-box .sl2{font-size:10px;color:var(--dim);margin-top:2px;}
+
+/* info tooltip */
+[data-tip]{position:relative;cursor:help;}
+[data-tip]:hover::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 5px);left:50%;transform:translateX(-50%);background:var(--surf2);border:1px solid var(--bd);border-radius:4px;padding:5px 8px;font-size:10px;color:var(--dim);white-space:pre-line;width:220px;z-index:100;pointer-events:none;}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <h1>메이플키우기 직업별 전투 성능 시뮬레이터</h1>
+  <span class="chip chip-org">v6</span>
+  <span class="chip chip-blue">에이블게임즈 포트폴리오</span>
+  <span class="hdr-meta">Lv.125 기준 · 마스터리 전수 반영 · 2026-04-14 · 작성: 이관엽</span>
+</div>
+
+<div class="tabs">
+  <button class="tbtn on" onclick="showTab('ov',this)">📊 개요</button>
+  <button class="tbtn" onclick="showTab('det',this)">🔍 직업별 상세</button>
+  <button class="tbtn" onclick="showTab('sim',this)">⚙️ 조정안 시뮬레이션</button>
+</div>
+
+<!-- ═══════════════════════════════ TAB1: 개요 ═══════════════════════════════ -->
+<div id="tab-ov" class="tab on">
+  <div class="ctrl">
+    <span class="ctrl-lbl">섀도어:</span>
+    <div class="tog">
+      <button class="topt on" id="sh-bug" onclick="setShadower('bug')">🔴 버그(현재) 1.740</button>
+      <button class="topt" id="sh-norm" onclick="setShadower('normal')">✅ 정상(수정후) 1.767</button>
+    </div>
+    <span class="ctrl-lbl" style="margin-left:6px;">표시:</span>
+    <div class="tog">
+      <button class="topt on" id="kpm-tog" onclick="toggleKpm(this)">분당킬 오버레이</button>
+    </div>
+    <div class="tog">
+      <button class="topt on" id="goal-tog" onclick="toggleGoal(this)">밸런스 목표구간</button>
+    </div>
+  </div>
+
+  <div class="ov-grid">
+    <div>
+      <div class="card">
+        <div class="card-t">CPI 순위 <span class="note">— 클릭 시 직업별 상세 이동</span></div>
+        <div class="legend-row" id="ov-legend">
+          <div class="leg"><div class="leg-sq" style="background:var(--rog)"></div>도적</div>
+          <div class="leg"><div class="leg-sq" style="background:var(--war)"></div>전사</div>
+          <div class="leg"><div class="leg-sq" style="background:var(--mag)"></div>마법사</div>
+          <div class="leg"><div class="leg-sq" style="background:var(--arc)"></div>궁수</div>
+          <div class="leg" id="kleg"><div class="leg-ci"></div>분당킬</div>
+          <div class="leg" id="gleg"><div class="leg-li"></div>밸런스 목표(1.55~1.75)</div>
+        </div>
+        <div id="ov-chart"></div>
+        <div class="axis-row"><div class="axis-sp"></div><div class="axis-lb" id="ov-ax"></div><div style="width:36px"></div><div style="width:40px"></div><div style="width:18px"></div></div>
+      </div>
+
+      <div class="card">
+        <div class="card-t">점유율 vs CPI 순위 괴리 <span class="note">— ▲숫자: 점유율순위가 CPI순위보다 낮음 (과대평가), ▼숫자: 높음 (과소평가)</span></div>
+        <div id="occ-chart"></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="card" style="margin-bottom:10px;">
+        <div class="card-t">핵심 지표 요약</div>
+        <div class="stat-row"><span class="slbl">CPI 최고 <span style="color:var(--mut);font-size:10px;">(버그/정상)</span></span><span class="sval" id="s-max">—</span></div>
+        <div class="stat-row"><span class="slbl">CPI 최저</span><span class="sval r" id="s-min">—</span></div>
+        <div class="stat-row"><span class="slbl">최고↔최저 격차</span><span class="sval y" id="s-gap">—</span></div>
+        <div class="stat-row"><span class="slbl">CPI 표준편차</span><span class="sval" id="s-sd">—</span></div>
+        <div class="stat-row"><span class="slbl">분당킬 1위</span><span class="sval g">나이트로드 113</span></div>
+        <div class="stat-row"><span class="slbl">점유율 1위</span><span class="sval">썬콜 23.2%</span></div>
+        <div class="stat-row"><span class="slbl">점유율 최저</span><span class="sval r">팔라딘 1.4%</span></div>
+        <div class="stat-row"><span class="slbl">상위3 점유율 합</span><span class="sval y">54.4%</span></div>
+        <div class="stat-row"><span class="slbl">섀도어 버그 CPI손실</span><span class="sval r">△0.027</span></div>
+      </div>
+
+      <div class="card" style="margin-bottom:10px;">
+        <div class="card-t">직업변경 상위 경로 (MGF.GG)</div>
+        <div class="stat-row"><span class="slbl">나이트로드→섀도어</span><span class="sval">7,093명</span></div>
+        <div class="stat-row"><span class="slbl">불독→썬콜</span><span class="sval">3,647명</span></div>
+        <div class="stat-row"><span class="slbl">보우마스터→신궁</span><span class="sval">3,313명</span></div>
+      </div>
+
+      <div class="infonote">
+        <strong>⚠ 썬콜 이상치</strong><br>
+        분당킬·CPI 모두 5위지만 점유율 23.2% 압도적 1위. 성능 외 변수(일몹뎀·UI 편의성·캐릭터 인지도) 복합 추정.<br><br>
+        <strong>💚 밸런스 목표구간</strong><br>
+        CPI 1.55~1.75 내 집중 = 상위 4개 직업 기준 ±10%. 현재 하위 3개(신궁·비숍·팔라딘) 이탈.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════ TAB2: 직업별 상세 ═══════════════════════════════ -->
+<div id="tab-det" class="tab">
+  <div class="jsel" id="jsel-row"></div>
+  <div class="det-grid">
+    <div class="sk-card">
+      <div class="sk-hdr">
+        <span id="det-jname">직업 선택</span>
+        <span style="font-size:11px;color:var(--mut);">CPI =</span>
+        <span class="cpi-badge" id="det-cpi">—</span>
+        <div class="tog" id="sh-tog" style="display:none;margin-left:auto;">
+          <button class="topt on" id="dsh-bug" onclick="setDetSh('bug')">버그</button>
+          <button class="topt" id="dsh-norm" onclick="setDetSh('normal')">정상</button>
+        </div>
+      </div>
+      <div id="det-warnbox"></div>
+      <table class="sk"><thead><tr>
+        <th>스킬명</th><th>유형</th><th>파라미터 (슬라이더)</th><th style="text-align:right;">기여값</th>
+      </tr></thead><tbody id="det-tbody"></tbody></table>
+      <div id="det-note" style="display:none;" class="note-box"></div>
+    </div>
+
+    <div class="cpanel">
+      <div class="cphero">
+        <div class="cpbig" id="cp-num">—</div>
+        <div class="cplbl">CPI (Combat Performance Index)</div>
+        <div class="cp-stats">
+          <div>CPI <span id="cp-rank">—</span></div>
+          <div>분당킬 <span id="cp-kpm">—</span></div>
+          <div>점유율 <span id="cp-occ">—</span></div>
+        </div>
+      </div>
+      <div class="bd-t">구성 분해</div>
+      <div class="bd-stack" id="cp-stack"></div>
+      <div class="bd-leg" id="cp-leg"></div>
+      <div class="pos-chart">
+        <div class="bd-t" style="margin-bottom:6px;">전 직업 CPI 위치</div>
+        <div id="cp-pos"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════ TAB3: 조정안 시뮬레이션 ═══════════════════════════════ -->
+<div id="tab-sim" class="tab">
+  <div class="sim-grid">
+    <div>
+      <div class="card">
+        <div class="card-t">1. 조정할 직업 선택</div>
+        <div class="sim-jsel" id="sim-jsel"></div>
+        <div class="card-t" style="margin-top:12px;">2. 프리셋 시나리오 (§8 기반)</div>
+        <div class="preset-row" id="preset-row"></div>
+        <div class="card-t">3. 파라미터 직접 조정</div>
+        <table class="sim-sk" id="sim-sktbl"></table>
+        <div class="ba-grid" style="margin-top:12px;">
+          <div class="ba-box"><div class="ba-lbl">현재 CPI</div><div class="ba-num b" id="sim-before">—</div></div>
+          <div class="ba-box"><div class="ba-lbl">조정 후 CPI</div><div class="ba-num a" id="sim-after">—</div></div>
+        </div>
+        <div class="delta-ln" id="sim-delta"></div>
+        <button class="rbtn" onclick="resetSimJob()">↺ 현재 직업 초기화</button>
+        <button class="rbtn" onclick="resetAll()">↺ 전체 초기화</button>
+      </div>
+    </div>
+
+    <div>
+      <div class="card">
+        <div class="card-t">4. 조정 전후 CPI 비교 — 전 직업</div>
+        <div class="stats-row" id="sim-stats-row"></div>
+        <div style="margin-bottom:8px;font-size:11px;color:var(--dim);">
+          <span style="display:inline-block;width:12px;height:8px;background:rgba(48,54,61,.9);border-radius:2px;margin-right:4px;vertical-align:middle;border:1px solid var(--bd);"></span>현재&nbsp;&nbsp;
+          <span style="display:inline-block;width:12px;height:8px;background:var(--acc);border-radius:2px;margin-right:4px;vertical-align:middle;opacity:.7;"></span>조정 후&nbsp;&nbsp;
+          <span style="display:inline-block;width:14px;height:2px;background:var(--green);margin-right:4px;vertical-align:middle;opacity:.6;"></span>목표구간(1.55~1.75)
+        </div>
+        <div id="sim-chart"></div>
+        <div class="axis-row" style="margin-top:5px;"><div style="width:144px;flex-shrink:0;"></div><div class="axis-lb" id="sim-ax"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  DATA  (v6 기준, 검증완료)
+// ═══════════════════════════════════════════════════════
+const CLS_CLR = {warrior:'#e85d04',mage:'#7b2fff',archer:'#2ea043',rogue:'#c0392b'};
+const BD_CLR = ['#f0883e','#58a6ff','#a371f7','#3fb950','#d29922','#f85149','#84b6f4'];
+const BAL_LO = 1.55, BAL_HI = 1.75;
+const CHART_LO = 1.0, CHART_HI = 1.85;
+
+const JOBS = [
+  {id:'shadower',name:'섀도어',cls:'rogue',kpm:103,occ:17.4,kpmRk:3,occRk:2,
+   bugMode:true,
+   notes:'[^1] Shadow Partner +100% 마스터리(Lv68): ×2해석(90%→180%). "+절대값" 해석(190%)도 가능 — 검토 필요.\n연막탄 버그: 지속12초 고정(정상20초), 벞지 미적용. 업타임 26.7%→44.4% 손실, CPI △0.027.',
+   skills_bug:[
+     {nm:'섀도어 인스팅트',tp:'passive',p:{fd:20}},
+     {nm:'인투 다크니스',   tp:'active', p:{fd:20,up:25.0}},
+     {nm:'연막탄 🐛',       tp:'active', p:{fd:15,up:26.7},bugSkill:true,normUp:44.4},
+     {nm:'쉐도우 파트너',  tp:'prob',   p:{ef:180,pr:25}},
+   ],
+   skills_normal:[
+     {nm:'섀도어 인스팅트',tp:'passive',p:{fd:20}},
+     {nm:'인투 다크니스',   tp:'active', p:{fd:20,up:25.0}},
+     {nm:'연막탄 ✅',       tp:'active', p:{fd:15,up:44.4}},
+     {nm:'쉐도우 파트너',  tp:'prob',   p:{ef:180,pr:25}},
+   ]},
+  {id:'fire_poison',name:'아크메이지(불독)',cls:'mage',kpm:112.3,occ:10.1,kpmRk:2,occRk:4,
+   notes:'이그나이트 DoT(불의 벽) CPI 미산입 — 발동조건·일몹뎀 변수 복잡. 실제 성능>CPI 가능.',
+   skills:[
+     {nm:'엘리먼트 앰플리피케이션',tp:'passive',p:{fd:15},note:''},
+     {nm:'아케인 에임',             tp:'passive',p:{fd:15},note:'Lv120 해금'},
+     {nm:'인피니티',                tp:'active', p:{fd:20,up:55.0},note:'Buff Mastery +10%(Lv117): 50→55%'},
+     {nm:'익스트림 매직',           tp:'prob',   p:{ef:15,pr:100},note:'독 5중첩 상시 가정'},
+     {nm:'엘리멘탈 리셋',           tp:'prob',   p:{ef:10,pr:40},note:'Elemental Reset ×2 마스터리(Lv82)'},
+     {nm:'이프리트',                tp:'summon', p:{v:0.113},note:'3500%×3/4초 ÷ 8700 × 37.5%'},
+   ]},
+  {id:'nightlord',name:'나이트로드',cls:'rogue',kpm:113,occ:13.8,kpmRk:1,occRk:3,
+   notes:'[^1] Shadow Partner +100% 마스터리(Lv68): ×2해석(90%→180%). 검토 필요.',
+   skills:[
+     {nm:'다크 세레니티',  tp:'passive',p:{fd:15}},
+     {nm:'아드레날린',     tp:'active', p:{fd:10,up:33.0}},
+     {nm:'퍼지 에어리어', tp:'active', p:{fd:15,up:44.4}},
+     {nm:'쉐도우 파트너', tp:'prob',   p:{ef:180,pr:25},note:'SP+100% 마스터리(Lv68)'},
+   ]},
+  {id:'hero',name:'히어로',cls:'warrior',kpm:93.9,occ:6.0,kpmRk:7,occRk:8,
+   notes:'[^2] 콤보 시너지 7.9%/스택 × 6중첩 추정. 마스터리(Lv82)+1%p 반영.\n⚠ 실전 스택 불안정 → CPI > 실측 과대평가. ⚠ ~Lv113 3차>4차 역전 현상.',
+   skills:[
+     {nm:'파워 스탠스', tp:'passive',p:{fd:15},note:'Lv125 해금'},
+     {nm:'인레이지',    tp:'active', p:{fd:12,up:33.3},note:'Lv115 해금'},
+     {nm:'콤보 시너지', tp:'stack',  p:{fps:7.9,st:6},note:'⚠ 과대평가 가능 — 검토 필요 [^2]'},
+   ]},
+  {id:'thunder',name:'아크메이지(썬콜)',cls:'mage',kpm:100,occ:23.2,kpmRk:5,occRk:1,
+   notes:'썬더스피어 주기딜(일몹뎀 +150%) CPI 미산입. 점유율 23.2% 1위 = 성능 외 변수 복합.',
+   skills:[
+     {nm:'엘리먼트 앰플리피케이션',tp:'passive',p:{fd:15}},
+     {nm:'아케인 에임',             tp:'passive',p:{fd:15},note:'Lv120 해금'},
+     {nm:'인피니티',                tp:'active', p:{fd:20,up:55.0},note:'Buff Mastery +10%(Lv117)'},
+     {nm:'엘리멘탈 리셋',           tp:'prob',   p:{ef:10,pr:40},note:'Elemental Reset ×2 마스터리(Lv82)'},
+     {nm:'엘퀴네스',                tp:'summon', p:{v:0.113},note:'3500%×3/4초 ÷ 8700 × 37.5%'},
+   ]},
+  {id:'darkknight',name:'다크나이트',cls:'warrior',kpm:92.1,occ:7.9,kpmRk:8,occRk:6,
+   notes:'비홀더 업타임 95.2% = 지속20초/(쿨30초×쿨감70%). 비홀더스 리벤지(650%×2) 발동조건 불명확 → 미산입. 실측 하위권 원인 추정.',
+   skills:[
+     {nm:'파이널 팩트',      tp:'passive',p:{fd:10}},
+     {nm:'파워 스탠스',     tp:'passive',p:{fd:15},note:'Lv125 해금'},
+     {nm:'비홀더(받는피해)',tp:'active', p:{fd:15,up:95.2},note:'쿨감-30%(Lv104): 20/21=95.2%'},
+     {nm:'비홀더 도미넌트', tp:'dot',    p:{v:0.059},note:'+50% 마스터리(Lv78): 60→90%/초'},
+   ]},
+  {id:'bowmaster',name:'보우마스터',cls:'archer',kpm:102.7,occ:8.7,kpmRk:4,occRk:5,
+   notes:'공속 스케일링(퀴버 카트리지) CPI 완전 미반영 = CPI 7위↔분당킬 4위 괴리 주원인.\n[^4] Mortal Blow 60% 추정 — 검토 필요.',
+   skills:[
+     {nm:'익스트림 아처리',tp:'passive',p:{fd:15}},
+     {nm:'아머 피어싱',    tp:'passive',p:{fd:10}},
+     {nm:'플레시 미라주',  tp:'prob',   p:{ef:110,pr:19.44},note:'+50% 마스터리(Lv68) 반영: 0.076→0.114'},
+     {nm:'모탈 블로우',    tp:'active', p:{fd:10,up:60.0},note:'[^4] +5초 마스터리(Lv90), 60% 추정'},
+   ]},
+  {id:'marksman',name:'신궁',cls:'archer',kpm:95,occ:7.9,kpmRk:6,occRk:7,
+   notes:'보스전 특화 설계(단일타겟 +5%). 자동사냥 다수타겟 효율 보완 필요.\n[^4] Mortal Blow 60% 추정 — 검토 필요.',
+   skills:[
+     {nm:'라스트맨 스탠딩',tp:'passive',p:{fd:15},note:'보스전 +5% 추가(자동사냥 미반영)'},
+     {nm:'익스트림 아처리',tp:'passive',p:{fd:15}},
+     {nm:'모탈 블로우',    tp:'active', p:{fd:10,up:60.0},note:'[^4] +5초 마스터리(Lv90), 60% 추정'},
+   ]},
+  {id:'bishop',name:'비숍',cls:'mage',kpm:null,occ:3.5,kpmRk:null,occRk:9,
+   notes:'2026-01-29 출시. 분당킬 미수집. Buff Mastery 미보유 → 인피니티 50%(불독·썬콜 55%와 차이).',
+   skills:[
+     {nm:'블러드 오브 디바인', tp:'passive',p:{fd:5}},
+     {nm:'인피니티',           tp:'active', p:{fd:20,up:50.0},note:'Buff Mastery 미보유 → 50.0%'},
+     {nm:'어드밴스드 블레싱',  tp:'active', p:{fd:4, up:76.9},note:'FD+4% 마스터리(Lv113)'},
+     {nm:'바하뮤트',           tp:'summon', p:{v:0.113},note:'쿨감-30% 마스터리는 Lv138 미해금'},
+   ]},
+  {id:'paladin',name:'팔라딘',cls:'warrior',kpm:null,occ:1.4,kpmRk:null,occRk:10,
+   notes:'2026-01-29 출시. 분당킬 미수집. 핵심 가치: 파티 유틸(컴뱃 오더스 아군 스킬렙+18).\n점유율 1.4% = 직업 존재 가치 의심 수준. 조정 시급.',
+   skills:[
+     {nm:'디바인 실드',  tp:'active',p:{fd:15,up:66.7},note:'15초마다 10초간 → 업타임 66.7%'},
+     {nm:'가디언',       tp:'active',p:{fd:10,up:83.3}},
+     {nm:'디바인 블레싱',tp:'active',p:{fd:12,up:73.3}},
+   ]},
+];
+
+// §8 기반 조정 프리셋
+const PRESETS = [
+  {id:'all_reset',   label:'전체 초기화',  jobId:null, desc:'모든 조정값 초기화',
+   apply:()=>{resetAll();}},
+  {id:'shadower_fix',label:'섀도어 버그수정',jobId:'shadower',
+   desc:'§8-2: 연막탄 업타임 26.7%→44.4%, 최종뎀 15%→17% (스킬렙 비례 추정)',
+   changes:{ 2:{up:44.4, fd:17} }},
+  {id:'hero_stack',  label:'히어로 스택안정',jobId:'hero',
+   desc:'§8-3(A): 콤보 시너지 평균 스택 6→7.5 (발동확률 완화 가정)',
+   changes:{ 2:{fps:7.9,st:7.5} }},
+  {id:'dk_beholder', label:'다크나이트 발동개선',jobId:'darkknight',
+   desc:'§8-3(A): 비홀더스 리벤지 발동조건 완화 → 도미넌트 직접기여 0.059→0.090',
+   changes:{ 3:{v:0.090} }},
+  {id:'paladin_dps', label:'팔라딘 딜 보강',jobId:'paladin',
+   desc:'§8-3(B): 자체 DPS를 딜러 80% 수준으로 — 디바인 실드 15%→22%',
+   changes:{ 0:{fd:22,up:66.7} }},
+  {id:'bishop_inf',  label:'비숍 버프마스터리',jobId:'bishop',
+   desc:'§8-3(B): 비숍도 Buff Mastery 적용 시 인피니티 50%→55%',
+   changes:{ 1:{fd:20,up:55.0} }},
+];
+
+// ═══════════════════════════════════════════════════════
+//  COMPUTE
+// ═══════════════════════════════════════════════════════
+function getSkills(job){
+  if(job.id==='shadower') return job.bugMode?job.skills_bug:job.skills_normal;
+  return job.skills;
+}
+function contrib(tp,p){
+  if(tp==='passive') return p.fd/100;
+  if(tp==='active')  return p.fd/100*p.up/100;
+  if(tp==='prob')    return p.ef/100*p.pr/100;
+  if(tp==='dot'||tp==='summon') return p.v;
+  if(tp==='stack')   return p.fps/100*p.st;
+  return 0;
+}
+function getCPI(job){
+  return 1+getSkills(job).reduce((s,sk)=>s+contrib(sk.tp,sk.p),0);
+}
+
+// sim state: per-job adjusted p copies
+const simAdj = {};
+JOBS.forEach(j=>{simAdj[j.id]=null;});
+
+function getSimCPI(job){
+  let adj=simAdj[job.id];
+  if(!adj) return getCPI(job);
+  return 1+getSkills(job).reduce((s,sk,i)=>s+contrib(sk.tp,adj[i]||sk.p),0);
+}
+
+function sortedByCPI(){ return [...JOBS].sort((a,b)=>getCPI(b)-getCPI(a));}
+
+let showKpm=true, showGoal=true;
+let detJob=JOBS[0], detShMode='bug';
+let simJob=JOBS[0];
+let activePreset=null;
+
+// ═══════════════════════════════════════════════════════
+//  OVERVIEW
+// ═══════════════════════════════════════════════════════
+function renderOv(){
+  let sorted=sortedByCPI();
+  let allCPI=sorted.map(j=>getCPI(j));
+  let max=allCPI[0], min=allCPI[allCPI.length-1];
+  let mean=allCPI.reduce((a,b)=>a+b,0)/allCPI.length;
+  let sd=Math.sqrt(allCPI.reduce((s,x)=>s+(x-mean)**2,0)/allCPI.length);
+  let shadName=JOBS.find(j=>j.id==='shadower').bugMode?'섀도어(버그) 1.740':'섀도어(정상) 1.767';
+  document.getElementById('s-max').textContent=shadName;
+  document.getElementById('s-min').textContent='팔라딘 '+min.toFixed(3);
+  document.getElementById('s-gap').textContent='△'+(max-min).toFixed(3);
+  document.getElementById('s-sd').textContent=sd.toFixed(4);
+
+  let range=CHART_HI-CHART_LO;
+  let gloPct=((BAL_LO-CHART_LO)/range*100).toFixed(2);
+  let ghiPct=((BAL_HI-CHART_LO)/range*100).toFixed(2);
+  let goalFillW=(BAL_HI-BAL_LO)/range*100;
+
+  let html='';
+  sorted.forEach((job,i)=>{
+    let cpi=getCPI(job);
+    let bPct=((cpi-CHART_LO)/range*100).toFixed(1);
+    let col=CLS_CLR[job.cls];
+    let kpDot='';
+    if(showKpm&&job.kpm!==null){
+      let kp=((job.kpm-80)/(120-80)*100);
+      kpDot=`<div class="kpdot" style="left:${kp.toFixed(1)}%" title="분당킬 ${job.kpm}"></div>`;
+    }
+    let goalHTML='';
+    if(showGoal){
+      goalHTML=`<div class="bgoal-fill" style="left:${gloPct}%;width:${goalFillW}%;"></div>
+                <div class="bgoal-lo" style="left:${gloPct}%;"></div>
+                <div class="bgoal-hi" style="left:${ghiPct}%;"></div>`;
+    }
+    let inBand=cpi>=BAL_LO&&cpi<=BAL_HI;
+    let outStyle=(!inBand)?'opacity:.85;':'';
+    html+=`<div class="bar-row" onclick="goDetail('${job.id}')">
+      <div class="jname${job.kpm===null?' dim':''}">${job.name}</div>
+      <div class="btrack">
+        ${goalHTML}
+        <div class="jbar" style="width:${bPct}%;background:${col};${outStyle}">
+          <span class="bval">${cpi.toFixed(3)}</span>
+        </div>
+        ${kpDot}
+      </div>
+      <div class="kcol">${job.kpm!==null?job.kpm:'—'}</div>
+      <div class="ocol">${job.occ}%</div>
+      <div class="rcol">${i+1}</div>
+    </div>`;
+  });
+  document.getElementById('ov-chart').innerHTML=html;
+
+  // axis
+  let ax='';
+  for(let v=1.0;v<=1.85;v+=0.1) ax+=`<span class="albl">${v.toFixed(1)}</span>`;
+  document.getElementById('ov-ax').innerHTML=ax;
+
+  // occ chart
+  let occS=[...JOBS].sort((a,b)=>b.occ-a.occ);
+  let cpiNames=sorted.map(j=>j.name);
+  let occH='';
+  occS.forEach(job=>{
+    let cpiRk=cpiNames.indexOf(job.name)+1;
+    let gap=job.occRk-cpiRk; // + means occ rank worse than CPI rank
+    let pct=(job.occ/25*100).toFixed(1);
+    let col=CLS_CLR[job.cls];
+    let gclr=gap===0?'var(--mut)':gap>0?'var(--red)':'var(--green)';
+    let gtxt=gap===0?'=':gap>0?'▲'+gap:'▼'+Math.abs(gap);
+    occH+=`<div class="bar-row" onclick="goDetail('${job.id}')">
+      <div class="jname">${job.name}</div>
+      <div class="btrack">
+        <div class="jbar" style="width:${pct}%;background:${col};opacity:.7;">
+          <span class="bval">${job.occ}%</span>
+        </div>
+      </div>
+      <div class="kcol" style="color:${gclr};font-weight:700;">${gtxt}</div>
+      <div class="ocol" style="color:var(--mut);font-size:9px;">CPI${cpiRk}</div>
+      <div class="rcol">${job.occRk}</div>
+    </div>`;
+  });
+  document.getElementById('occ-chart').innerHTML=occH;
+}
+
+// ═══════════════════════════════════════════════════════
+//  DETAIL
+// ═══════════════════════════════════════════════════════
+function initDetTab(){
+  let h='';
+  JOBS.forEach(j=>{
+    let c=CLS_CLR[j.cls];
+    h+=`<button class="jbtn${j.id===detJob.id?' on':''}" id="jbtn-${j.id}" onclick="goDetail('${j.id}')">
+      <span class="cdot" style="background:${c}"></span>${j.name}
+    </button>`;
+  });
+  document.getElementById('jsel-row').innerHTML=h;
+  renderDet(detJob);
+}
+
+function goDetail(id){
+  showTab('det',document.querySelectorAll('.tbtn')[1]);
+  detJob=JOBS.find(j=>j.id===id);
+  document.querySelectorAll('.jbtn').forEach(b=>b.classList.remove('on'));
+  let b=document.getElementById('jbtn-'+id);
+  if(b)b.classList.add('on');
+  renderDet(detJob);
+}
+
+function setDetSh(m){
+  detShMode=m;
+  JOBS.find(j=>j.id==='shadower').bugMode=m==='bug';
+  document.getElementById('dsh-bug').classList.toggle('on',m==='bug');
+  document.getElementById('dsh-norm').classList.toggle('on',m==='normal');
+  renderDet(detJob);
+  renderOv();
+  renderSim();
+}
+
+const TM={
+  passive:{lbl:'패시브',cls:'tp-p'},
+  active: {lbl:'액티브',cls:'tp-a'},
+  prob:   {lbl:'확률성',cls:'tp-r'},
+  dot:    {lbl:'DoT',   cls:'tp-d'},
+  summon: {lbl:'소환수',cls:'tp-s'},
+  stack:  {lbl:'중첩형',cls:'tp-r'},
+};
+
+function buildSlider(sk,jid,i){
+  let p=sk.p, tp=sk.tp;
+  let h='';
+  if(tp==='passive'){
+    h=`<div class="sl-wrap">최종뎀 <input type="range" min="1" max="30" step=".5" value="${p.fd}" oninput="updateP('${jid}',${i},'fd',this.value)"> <span class="sv" id="sv-${jid}-${i}-fd">${p.fd}%</span></div>`;
+  } else if(tp==='active'){
+    h=`<div class="sl-wrap">뎀 <input type="range" min="1" max="30" step=".5" value="${p.fd}" oninput="updateP('${jid}',${i},'fd',this.value)"> <span class="sv" id="sv-${jid}-${i}-fd">${p.fd}%</span></div>
+       <div class="sl-wrap">업타임 <input type="range" min="5" max="100" step=".5" value="${p.up}" oninput="updateP('${jid}',${i},'up',this.value)"> <span class="sv" id="sv-${jid}-${i}-up">${p.up}%</span></div>`;
+  } else if(tp==='prob'){
+    h=`<div class="sl-wrap">효과 <input type="range" min="5" max="300" step="1" value="${p.ef}" oninput="updateP('${jid}',${i},'ef',this.value)"> <span class="sv" id="sv-${jid}-${i}-ef">${p.ef}%</span></div>
+       <div class="sl-wrap">확률 <input type="range" min="1" max="100" step=".5" value="${parseFloat(p.pr).toFixed(1)}" oninput="updateP('${jid}',${i},'pr',this.value)"> <span class="sv" id="sv-${jid}-${i}-pr">${parseFloat(p.pr).toFixed(1)}%</span></div>`;
+  } else if(tp==='dot'||tp==='summon'){
+    h=`<div class="sl-wrap">기여값 <input type="range" min=".01" max=".3" step=".001" value="${p.v}" oninput="updateP('${jid}',${i},'v',this.value)"> <span class="sv" id="sv-${jid}-${i}-v">${p.v.toFixed(3)}</span></div>`;
+  } else if(tp==='stack'){
+    h=`<div class="sl-wrap">%/스택 <input type="range" min="1" max="15" step=".1" value="${p.fps}" oninput="updateP('${jid}',${i},'fps',this.value)"> <span class="sv" id="sv-${jid}-${i}-fps">${p.fps}%</span></div>
+       <div class="sl-wrap">스택 <input type="range" min="1" max="8" step=".5" value="${p.st}" oninput="updateP('${jid}',${i},'st',this.value)"> <span class="sv" id="sv-${jid}-${i}-st">${p.st}중</span></div>`;
+  }
+  return h;
+}
+
+function renderDet(job){
+  detJob=job;
+  let skills=getSkills(job);
+  let cpi=getCPI(job);
+  document.getElementById('det-jname').textContent=job.name;
+  document.getElementById('det-cpi').textContent=cpi.toFixed(3);
+  document.getElementById('cp-num').textContent=cpi.toFixed(3);
+  document.getElementById('cp-kpm').textContent=job.kpm!=null?job.kpm:'미수집';
+  document.getElementById('cp-occ').textContent=job.occ+'%';
+
+  // shadower toggle
+  let st=document.getElementById('sh-tog');
+  let wb=document.getElementById('det-warnbox');
+  if(job.id==='shadower'){
+    st.style.display='flex';
+    document.getElementById('dsh-bug').classList.toggle('on',job.bugMode);
+    document.getElementById('dsh-norm').classList.toggle('on',!job.bugMode);
+    wb.innerHTML=job.bugMode?`<div class="warn-box">🐛 <strong>연막탄 버그</strong> — 지속시간 12초 고정(정상:20초), 벞지 미적용. 업타임 26.7%→44.4% 손실 | CPI △0.027</div>`:'';
+  }else{
+    st.style.display='none';
+    wb.innerHTML='';
+  }
+
+  // rank
+  let sorted=sortedByCPI();
+  let rk=sorted.findIndex(j=>j.id===job.id)+1;
+  document.getElementById('cp-rank').textContent=rk+'위';
+
+  // table
+  let tbody='';
+  skills.forEach((sk,i)=>{
+    let c=contrib(sk.tp,sk.p);
+    let tm=TM[sk.tp]||TM.passive;
+    tbody+=`<tr>
+      <td><strong>${sk.nm.replace(/🐛|✅/g,'')}</strong>${sk.note?`<br><span style="font-size:9px;color:var(--mut)">${sk.note}</span>`:''}</td>
+      <td><span class="tbadge ${tm.cls}">${tm.lbl}</span></td>
+      <td>${buildSlider(sk,job.id,i)}</td>
+      <td style="text-align:right"><span class="cnum" id="c-${job.id}-${i}" style="color:var(--acc)">+${c.toFixed(3)}</span></td>
+    </tr>`;
+  });
+  tbody+=`<tr style="background:rgba(240,136,62,.05)">
+    <td colspan="3" style="text-align:right;font-weight:700;padding:7px;">CPI 합계</td>
+    <td style="text-align:right"><span class="cnum" id="cpi-sum-${job.id}" style="color:var(--acc);font-size:13px">= ${cpi.toFixed(3)}</span></td>
+  </tr>`;
+  document.getElementById('det-tbody').innerHTML=tbody;
+
+  // note
+  let nb=document.getElementById('det-note');
+  if(job.notes){
+    nb.style.display='block';
+    nb.innerHTML=job.notes.replace(/⚠/g,'<span class="y">⚠</span>').replace(/\n/g,'<br>');
+  }else nb.style.display='none';
+
+  // breakdown
+  let cs=skills.map((sk,i)=>({nm:sk.nm.replace(/🐛|✅/g,''),v:contrib(sk.tp,sk.p),col:BD_CLR[i%BD_CLR.length]}));
+  let tot=1+cs.reduce((s,c)=>s+c.v,0);
+  let stk=`<div class="bd-seg" style="width:${(1/tot*100).toFixed(1)}%;background:var(--surf2);border:1px solid var(--bd)"></div>`;
+  cs.forEach(c=>{stk+=`<div class="bd-seg" style="width:${(c.v/tot*100).toFixed(1)}%;background:${c.col}"></div>`;});
+  document.getElementById('cp-stack').innerHTML=stk;
+  let lg=`<div class="bd-r"><div class="bd-l"><div class="bd-dot" style="background:var(--surf2);border:1px solid var(--bd)"></div><div class="bd-n">기본값 (1)</div></div><div class="bd-v">+1.000</div></div>`;
+  cs.forEach(c=>{lg+=`<div class="bd-r"><div class="bd-l"><div class="bd-dot" style="background:${c.col}"></div><div class="bd-n">${c.nm.length>12?c.nm.substring(0,12)+'…':c.nm}</div></div><div class="bd-v">+${c.v.toFixed(3)}</div></div>`;});
+  document.getElementById('cp-leg').innerHTML=lg;
+
+  // position chart
+  renderPosChart(job.id);
+}
+
+function renderPosChart(activeId){
+  let sorted=sortedByCPI();
+  let range=CHART_HI-CHART_LO;
+  let h='';
+  sorted.forEach(job=>{
+    let cpi=getCPI(job),pct=((cpi-CHART_LO)/range*100).toFixed(1);
+    let isA=job.id===activeId;
+    let col=isA?'var(--acc)':CLS_CLR[job.cls];
+    let op=isA?'1':'0.4';
+    h+=`<div style="display:flex;align-items:center;gap:5px;margin-bottom:3px;">
+      <div style="width:74px;font-size:9px;text-align:right;color:${isA?'var(--acc)':'var(--mut)'}">${job.name.length>6?job.name.substring(0,6)+'…':job.name}</div>
+      <div style="flex:1;height:7px;background:var(--surf2);border-radius:2px;position:relative;">
+        <div style="position:absolute;height:100%;width:${pct}%;background:${col};border-radius:2px;opacity:${op}"></div>
+      </div>
+      <div style="width:38px;font-size:9px;font-family:monospace;color:${isA?'var(--acc)':'var(--mut)'}">${cpi.toFixed(3)}</div>
+    </div>`;
+  });
+  document.getElementById('cp-pos').innerHTML=h;
+}
+
+function updateP(jid,i,key,val){
+  let job=JOBS.find(j=>j.id===jid);
+  let sk=getSkills(job)[i];
+  sk.p[key]=parseFloat(val);
+  let sv=document.getElementById(`sv-${jid}-${i}-${key}`);
+  if(sv){
+    let u=key==='v'?'':key==='st'?'중':'%';
+    let disp=key==='v'?parseFloat(val).toFixed(3):parseFloat(val).toFixed(1);
+    sv.textContent=disp+u;
+  }
+  let c=contrib(sk.tp,sk.p);
+  let cd=document.getElementById(`c-${jid}-${i}`);
+  if(cd)cd.textContent='+'+c.toFixed(3);
+  let cpi=getCPI(job);
+  if(detJob&&detJob.id===jid){
+    document.getElementById('det-cpi').textContent=cpi.toFixed(3);
+    document.getElementById('cp-num').textContent=cpi.toFixed(3);
+    let cs=document.getElementById(`cpi-sum-${jid}`);
+    if(cs)cs.textContent='= '+cpi.toFixed(3);
+    let sorted=sortedByCPI();
+    document.getElementById('cp-rank').textContent=(sorted.findIndex(j=>j.id===jid)+1)+'위';
+    renderPosChart(jid);
+    renderDetBreakdown(job);
+  }
+  renderOv();
+  renderSimChart();
+}
+
+function renderDetBreakdown(job){
+  let skills=getSkills(job);
+  let cs=skills.map((sk,i)=>({nm:sk.nm.replace(/🐛|✅/g,''),v:contrib(sk.tp,sk.p),col:BD_CLR[i%BD_CLR.length]}));
+  let tot=1+cs.reduce((s,c)=>s+c.v,0);
+  let stk=`<div class="bd-seg" style="width:${(1/tot*100).toFixed(1)}%;background:var(--surf2);border:1px solid var(--bd)"></div>`;
+  cs.forEach(c=>{stk+=`<div class="bd-seg" style="width:${(c.v/tot*100).toFixed(1)}%;background:${c.col}"></div>`;});
+  document.getElementById('cp-stack').innerHTML=stk;
+  let lg=`<div class="bd-r"><div class="bd-l"><div class="bd-dot" style="background:var(--surf2);border:1px solid var(--bd)"></div><div class="bd-n">기본값 (1)</div></div><div class="bd-v">+1.000</div></div>`;
+  cs.forEach(c=>{lg+=`<div class="bd-r"><div class="bd-l"><div class="bd-dot" style="background:${c.col}"></div><div class="bd-n">${c.nm.length>12?c.nm.substring(0,12)+'…':c.nm}</div></div><div class="bd-v">+${c.v.toFixed(3)}</div></div>`;});
+  document.getElementById('cp-leg').innerHTML=lg;
+}
+
+// ═══════════════════════════════════════════════════════
+//  SIMULATION
+// ═══════════════════════════════════════════════════════
+function initSim(){
+  // job sel
+  let h='';
+  JOBS.forEach(j=>{h+=`<button class="sjbtn${j.id===simJob.id?' on':''}" id="sjbtn-${j.id}" onclick="selectSimJob('${j.id}')">${j.name}</button>`;});
+  document.getElementById('sim-jsel').innerHTML=h;
+
+  // presets (exclude all_reset which is a button already)
+  let ph='';
+  PRESETS.forEach(p=>{
+    ph+=`<button class="pbtn" id="pbtn-${p.id}" title="${p.desc}" onclick="applyPreset('${p.id}')">${p.label}</button>`;
+  });
+  document.getElementById('preset-row').innerHTML=ph;
+
+  renderSimSkTbl(simJob);
+  renderSim();
+}
+
+function selectSimJob(id){
+  simJob=JOBS.find(j=>j.id===id);
+  document.querySelectorAll('.sjbtn').forEach(b=>b.classList.remove('on'));
+  document.getElementById('sjbtn-'+id).classList.add('on');
+  renderSimSkTbl(simJob);
+  renderSimBA(simJob);
+}
+
+function buildSimSlider(sk,p,jid,i){
+  let tp=sk.tp;
+  let h='';
+  if(tp==='passive'){
+    h=`<div class="sl-wrap"><input type="range" min="1" max="30" step=".5" value="${p.fd}" oninput="simP('${jid}',${i},'fd',this.value)"> <span class="sv" id="ssv-${jid}-${i}-fd">${p.fd}%뎀</span></div>`;
+  } else if(tp==='active'){
+    h=`<div class="sl-wrap"><input type="range" min="5" max="100" step=".5" value="${p.up}" oninput="simP('${jid}',${i},'up',this.value)"> <span class="sv" id="ssv-${jid}-${i}-up">${p.up}%업</span></div>
+       <div class="sl-wrap"><input type="range" min="1" max="30" step=".5" value="${p.fd}" oninput="simP('${jid}',${i},'fd',this.value)"> <span class="sv" id="ssv-${jid}-${i}-fd">${p.fd}%뎀</span></div>`;
+  } else if(tp==='prob'){
+    h=`<div class="sl-wrap"><input type="range" min="5" max="300" step="1" value="${p.ef}" oninput="simP('${jid}',${i},'ef',this.value)"> <span class="sv" id="ssv-${jid}-${i}-ef">${p.ef}%효</span></div>
+       <div class="sl-wrap"><input type="range" min="1" max="100" step=".5" value="${parseFloat(p.pr).toFixed(1)}" oninput="simP('${jid}',${i},'pr',this.value)"> <span class="sv" id="ssv-${jid}-${i}-pr">${parseFloat(p.pr).toFixed(1)}%확</span></div>`;
+  } else if(tp==='dot'||tp==='summon'){
+    h=`<div class="sl-wrap"><input type="range" min=".01" max=".3" step=".001" value="${p.v}" oninput="simP('${jid}',${i},'v',this.value)"> <span class="sv" id="ssv-${jid}-${i}-v">${p.v.toFixed(3)}</span></div>`;
+  } else if(tp==='stack'){
+    h=`<div class="sl-wrap"><input type="range" min="1" max="15" step=".1" value="${p.fps}" oninput="simP('${jid}',${i},'fps',this.value)"> <span class="sv" id="ssv-${jid}-${i}-fps">${p.fps}%/st</span></div>
+       <div class="sl-wrap"><input type="range" min="1" max="8" step=".5" value="${p.st}" oninput="simP('${jid}',${i},'st',this.value)"> <span class="sv" id="ssv-${jid}-${i}-st">${p.st}중</span></div>`;
+  }
+  return h;
+}
+
+function renderSimSkTbl(job){
+  let skills=getSkills(job);
+  let adj=simAdj[job.id];
+  let h='';
+  skills.forEach((sk,i)=>{
+    let p=(adj&&adj[i])?adj[i]:sk.p;
+    let tm=TM[sk.tp]||TM.passive;
+    h+=`<tr>
+      <td style="color:var(--dim);width:105px;font-size:11px;">${sk.nm.replace(/🐛|✅/g,'')}</td>
+      <td><span class="tbadge ${tm.cls}" style="font-size:8px;">${tm.lbl}</span></td>
+      <td>${buildSimSlider(sk,p,job.id,i)}</td>
+    </tr>`;
+  });
+  document.getElementById('sim-sktbl').innerHTML=h;
+  renderSimBA(job);
+}
+
+function simP(jid,i,key,val){
+  let job=JOBS.find(j=>j.id===jid);
+  let skills=getSkills(job);
+  if(!simAdj[jid]) simAdj[jid]=skills.map(sk=>({...sk.p}));
+  simAdj[jid][i][key]=parseFloat(val);
+  let fv=parseFloat(val);
+  let u=key==='v'?'':key==='st'?'中':'%';
+  let sfx=key==='fd'?'%뎀':key==='up'?'%업':key==='ef'?'%효':key==='pr'?'%확':key==='v'?'':key==='st'?'중':'%/st';
+  let sv=document.getElementById(`ssv-${jid}-${i}-${key}`);
+  if(sv)sv.textContent=(key==='v'?fv.toFixed(3):fv.toFixed(1))+sfx;
+  renderSimBA(job);
+  renderSimChart();
+}
+
+function renderSimBA(job){
+  let baseCPI=getCPI(job);
+  let adjCPI=getSimCPI(job);
+  document.getElementById('sim-before').textContent=baseCPI.toFixed(3);
+  document.getElementById('sim-after').textContent=adjCPI.toFixed(3);
+  let d=adjCPI-baseCPI;
+  let del=document.getElementById('sim-delta');
+  if(Math.abs(d)<0.001) del.innerHTML='<span class="eq">변경 없음</span>';
+  else{ let s=d>0?'+':''; del.innerHTML=`<span class="${d>0?'up':'dn'}">${s}${d.toFixed(3)} (${s}${(d/baseCPI*100).toFixed(1)}%)</span>`; }
+}
+
+function applyPreset(pid){
+  let pr=PRESETS.find(p=>p.id===pid);
+  if(!pr) return;
+  if(pid==='all_reset'){resetAll();return;}
+  if(!pr.jobId) return;
+  let job=JOBS.find(j=>j.id===pr.jobId);
+  let skills=getSkills(job);
+  if(!simAdj[pr.jobId]) simAdj[pr.jobId]=skills.map(sk=>({...sk.p}));
+  Object.entries(pr.changes).forEach(([si,changes])=>{
+    Object.assign(simAdj[pr.jobId][parseInt(si)],changes);
+  });
+  // update simJob to that job
+  simJob=job;
+  document.querySelectorAll('.sjbtn').forEach(b=>b.classList.remove('on'));
+  let sb=document.getElementById('sjbtn-'+pr.jobId);
+  if(sb)sb.classList.add('on');
+
+  // mark active preset
+  activePreset=pid;
+  document.querySelectorAll('.pbtn').forEach(b=>b.classList.remove('on'));
+  document.getElementById('pbtn-'+pid).classList.add('on');
+
+  renderSimSkTbl(job);
+  renderSimBA(job);
+  renderSimChart();
+}
+
+function resetSimJob(){
+  simAdj[simJob.id]=null;
+  activePreset=null;
+  document.querySelectorAll('.pbtn').forEach(b=>b.classList.remove('on'));
+  renderSimSkTbl(simJob);
+  renderSim();
+}
+function resetAll(){
+  JOBS.forEach(j=>{simAdj[j.id]=null;});
+  activePreset=null;
+  document.querySelectorAll('.pbtn').forEach(b=>b.classList.remove('on'));
+  renderSimSkTbl(simJob);
+  renderSim();
+}
+
+function renderSim(){
+  renderSimChart();
+  renderSimBA(simJob);
+}
+
+function renderSimChart(){
+  let sorted=sortedByCPI();
+  let range=CHART_HI-CHART_LO;
+  let gloPct=((BAL_LO-CHART_LO)/range*100).toFixed(2);
+  let ghiPct=((BAL_HI-CHART_LO)/range*100).toFixed(2);
+  let gfillW=(BAL_HI-BAL_LO)/range*100;
+
+  // stats
+  let allAdj=JOBS.map(j=>getSimCPI(j));
+  let allBase=JOBS.map(j=>getCPI(j));
+  let adjMean=allAdj.reduce((a,b)=>a+b,0)/allAdj.length;
+  let adjSD=Math.sqrt(allAdj.reduce((s,x)=>s+(x-adjMean)**2,0)/allAdj.length);
+  let adjMax=Math.max(...allAdj), adjMin=Math.min(...allAdj);
+  let baseMean=allBase.reduce((a,b)=>a+b,0)/allBase.length;
+  let baseSD=Math.sqrt(allBase.reduce((s,x)=>s+(x-baseMean)**2,0)/allBase.length);
+  let baseGap=Math.max(...allBase)-Math.min(...allBase);
+  let adjGap=adjMax-adjMin;
+
+  let sHtml=`
+    <div class="stat-box"><div class="sv2" style="color:var(--acc)">${adjSD.toFixed(4)}</div><div class="sl2">조정 후 표준편차</div></div>
+    <div class="stat-box"><div class="sv2" style="color:var(--dim)">${baseSD.toFixed(4)}</div><div class="sl2">현재 표준편차</div></div>
+    <div class="stat-box"><div class="sv2" style="color:${adjGap<baseGap?'var(--green)':'var(--red)'}">${adjGap.toFixed(3)}</div><div class="sl2">조정 후 최고↔최저</div></div>
+    <div class="stat-box"><div class="sv2" style="color:var(--dim)">${baseGap.toFixed(3)}</div><div class="sl2">현재 최고↔최저</div></div>
+  `;
+  document.getElementById('sim-stats-row').innerHTML=sHtml;
+
+  let h='';
+  sorted.forEach(job=>{
+    let base=getCPI(job);
+    let adj=getSimCPI(job);
+    let bPct=((base-CHART_LO)/range*100).toFixed(1);
+    let aPct=((adj-CHART_LO)/range*100).toFixed(1);
+    let isActive=simJob&&simJob.id===job.id;
+    let col=isActive?'var(--acc)':CLS_CLR[job.cls];
+    let d=adj-base;
+    let dTxt=Math.abs(d)<0.001?'':`<span class="${d>0?'up':'dn'}">${d>0?'+':''}${d.toFixed(3)}</span>`;
+    h+=`<div class="diff-row">
+      <div class="diff-n${isActive?' hi':''}">${job.name}</div>
+      <div class="dtrack">
+        <div class="dgoal-fill" style="left:${gloPct}%;width:${gfillW}%;"></div>
+        <div class="dgoal-lo" style="left:${gloPct}%;"></div>
+        <div class="dgoal-hi" style="left:${ghiPct}%;"></div>
+        <div class="dbase" style="width:${bPct}%;"></div>
+        <div class="dadj" style="width:${aPct}%;background:${col};"></div>
+      </div>
+      <div class="dnums"><span class="db">${base.toFixed(3)}</span>${Math.abs(d)>0.001?`<span>→</span><span class="da">${adj.toFixed(3)}</span>`:''}</div>
+    </div>`;
+  });
+  document.getElementById('sim-chart').innerHTML=h;
+
+  // axis
+  let ax='';
+  for(let v=1.0;v<=1.85;v+=0.1) ax+=`<span class="albl">${v.toFixed(1)}</span>`;
+  document.getElementById('sim-ax').innerHTML=ax;
+}
+
+// ═══════════════════════════════════════════════════════
+//  CONTROLS
+// ═══════════════════════════════════════════════════════
+let shadMode='bug';
+function setShadower(m){
+  shadMode=m;
+  JOBS.find(j=>j.id==='shadower').bugMode=m==='bug';
+  document.getElementById('sh-bug').classList.toggle('on',m==='bug');
+  document.getElementById('sh-norm').classList.toggle('on',m==='normal');
+  renderOv();
+  if(detJob&&detJob.id==='shadower') renderDet(detJob);
+  renderSim();
+}
+
+function toggleKpm(btn){
+  showKpm=!showKpm;
+  btn.classList.toggle('on',showKpm);
+  document.getElementById('kleg').style.opacity=showKpm?'1':'0.3';
+  renderOv();
+}
+function toggleGoal(btn){
+  showGoal=!showGoal;
+  btn.classList.toggle('on',showGoal);
+  document.getElementById('gleg').style.opacity=showGoal?'1':'0.3';
+  renderOv();
+}
+
+function showTab(id,btn){
+  document.querySelectorAll('.tab').forEach(e=>e.classList.remove('on'));
+  document.querySelectorAll('.tbtn').forEach(e=>e.classList.remove('on'));
+  document.getElementById('tab-'+id).classList.add('on');
+  if(btn) btn.classList.add('on');
+}
+
+// ═══════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded',()=>{
+  renderOv();
+  initDetTab();
+  initSim();
+});
+</script>
+</body>
+</html>
